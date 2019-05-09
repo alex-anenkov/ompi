@@ -63,6 +63,15 @@ static mca_base_var_enum_value_t iallreduce_algorithms[] = {
     {0, NULL}
 };
 
+int libnbc_ialltoall_algorithm = 0;             /* ialltoall user forced algorithm */
+static mca_base_var_enum_value_t ialltoall_algorithms[] = {
+    {0, "ignore"},
+    {1, "linear"},
+    {2, "dissemination"},
+    {3, "pairwise"},
+    {0, NULL}
+};
+
 int libnbc_ibcast_algorithm = 0;             /* ibcast user forced algorithm */
 int libnbc_ibcast_knomial_radix = 4;
 static mca_base_var_enum_value_t ibcast_algorithms[] = {
@@ -229,6 +238,16 @@ libnbc_register(void)
                                     MCA_BASE_VAR_TYPE_INT, new_enum, 0, MCA_BASE_VAR_FLAG_SETTABLE,
                                     OPAL_INFO_LVL_5, MCA_BASE_VAR_SCOPE_ALL,
                                     &libnbc_iallreduce_algorithm);
+    OBJ_RELEASE(new_enum);
+
+    libnbc_ialltoall_algorithm = 0;
+    (void) mca_base_var_enum_create("coll_libnbc_ialltoall_algorithms", ialltoall_algorithms, &new_enum);
+    mca_base_component_var_register(&mca_coll_libnbc_component.super.collm_version,
+                                    "ialltoall_algorithm",
+                                    "Which ialltoall algorithm is used: 0 ignore, 1 linear, 2 dissemination, 3 pairwise",
+                                    MCA_BASE_VAR_TYPE_INT, new_enum, 0, MCA_BASE_VAR_FLAG_SETTABLE,
+                                    OPAL_INFO_LVL_5, MCA_BASE_VAR_SCOPE_ALL,
+                                    &libnbc_ialltoall_algorithm);
     OBJ_RELEASE(new_enum);
 
     libnbc_ibcast_algorithm = 0;

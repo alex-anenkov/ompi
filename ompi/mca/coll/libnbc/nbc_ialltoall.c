@@ -53,7 +53,6 @@ int NBC_Alltoall_args_compare(NBC_Alltoall_args *a, NBC_Alltoall_args *b, void *
 }
 #endif
 
-/* simple linear MPI_Ialltoall the (simple) algorithm just sends to all nodes */
 static int nbc_alltoall_init(const void* sendbuf, int sendcount, MPI_Datatype sendtype, void* recvbuf, int recvcount,
                              MPI_Datatype recvtype, struct ompi_communicator_t *comm, ompi_request_t ** request,
                              struct mca_coll_base_module_2_3_0_t *module, bool persistent)
@@ -97,19 +96,28 @@ static int nbc_alltoall_init(const void* sendbuf, int sendcount, MPI_Datatype se
 
   /* algorithm selection */
   a2asize = sndsize * sendcount * p;
-  /* this number is optimized for TCP on odin.cs.indiana.edu */
   if (inplace) {
     alg = NBC_A2A_INPLACE;
-  } else if((p <= 8) && ((a2asize < 1<<17) || (sndsize*sendcount < 1<<12))) {
-    /* just send as fast as we can if we have less than 8 peers, if the
-     * total communicated size is smaller than 1<<17 *and* if we don't
-     * have eager messages (msgsize < 1<<13) */
+  } else if (1 == libnbc_ialltoall_algorithm) {
     alg = NBC_A2A_LINEAR;
-  } else if(a2asize < (1<<12)*(unsigned int)p) {
-    /*alg = NBC_A2A_DISS;*/
-    alg = NBC_A2A_LINEAR;
-  } else
-    alg = NBC_A2A_LINEAR; /*NBC_A2A_PAIRWISE;*/
+  } else if (2 == libnbc_ialltoall_algorithm) {
+    alg = NBC_A2A_DISS;
+  } else if (3 == libnbc_ialltoall_algorithm) {
+    alg = NBC_A2A_PAIRWISE;
+  } else {
+     /* this number is optimized for TCP on odin.cs.indiana.edu */
+    if ((p <= 8) && ((a2asize < 1<<17) || (sndsize*sendcount < 1<<12))) {
+      /* just send as fast as we can if we have less than 8 peers, if the
+      * total communicated size is smaller than 1<<17 *and* if we don't
+      * have eager messages (msgsize < 1<<13) */
+      alg = NBC_A2A_LINEAR;
+    } else if(a2asize < (1<<12)*(unsigned int)p) {
+      /*alg = NBC_A2A_DISS;*/
+      alg = NBC_A2A_LINEAR;
+    } else {
+      alg = NBC_A2A_LINEAR; /*NBC_A2A_PAIRWISE;*/
+    }
+  }
 
   /* allocate temp buffer if we need one */
   if (alg == NBC_A2A_INPLACE) {
