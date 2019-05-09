@@ -21,6 +21,9 @@
  */
 #include "nbc_internal.h"
 
+static inline int a2a_sched_bruck(int rank, int p, MPI_Aint sndext, MPI_Aint rcvext, NBC_Schedule *schedule,
+                                   const void* sendbuf, int sendcount, MPI_Datatype sendtype, void* recvbuf,
+                                   int recvcount, MPI_Datatype recvtype, MPI_Comm comm, void* tmpbuf);
 static inline int a2a_sched_linear(int rank, int p, MPI_Aint sndext, MPI_Aint rcvext, NBC_Schedule *schedule,
                                    const void* sendbuf, int sendcount, MPI_Datatype sendtype, void* recvbuf,
                                    int recvcount, MPI_Datatype recvtype, MPI_Comm comm);
@@ -379,6 +382,54 @@ int ompi_coll_libnbc_ialltoall_inter (const void* sendbuf, int sendcount, MPI_Da
         NBC_Return_handle (*(ompi_coll_libnbc_request_t **)request);
         *request = &ompi_request_null.request;
         return res;
+    }
+
+    return OMPI_SUCCESS;
+}
+
+static inline int a2a_sched_bruck(int rank, int p, MPI_Aint sndext, MPI_Aint rcvext, NBC_Schedule *schedule,
+                                   const void* sendbuf, int sendcount, MPI_Datatype sendtype, void* recvbuf,
+                                   int recvcount, MPI_Datatype recvtype, MPI_Comm comm, void* tmpbuf)
+{
+    if (0 == rank) printf("AA: a2a_sched_bruck\n");
+    int res;
+    char *tmpsend = NULL, *tmprecv = NULL;
+    
+    ptrdiff_t span, gap = 0;
+    span = opal_datatype_span(&sendtype->super, (int64_t)p * sendcount, &gap);
+    tmpbuf = malloc(span);
+    tmpbuf = (char *)tmpbuf - gap;
+
+    tmpsend = (char*)sendbuf + (ptrdiff_t)rank * (ptrdiff_t)sendcount * sndext;
+    res = NBC_Sched_copy(tmpsend, false, (ptrdiff_t)(p - rank) * (ptrdiff_t)sendcount, sendtype,
+                          tmpbuf, false, (ptrdiff_t)(p - rank) * (ptrdiff_t)sendcount, sendtype, schedule, true);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { return res; }
+
+    if (rank != 0) {
+        tmprecv = (char *)tmpbuf + (ptrdiff_t)(p - rank) * (ptrdiff_t)sendcount * sndext;
+        res = NBC_Sched_copy((void *)sendbuf, false, (ptrdiff_t)rank * (ptrdiff_t)sendcount, sendtype,
+                              tmprecv, false, (ptrdiff_t)rank * (ptrdiff_t)sendcount, sendtype, schedule, true);
+        if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { return res; }
+    }
+
+    /* perform communication step */
+    for (int distance = 1; distance < p; distance <<= 1) {
+        int sendto = (rank + distance) % p;
+        int recvfrom = (rank - distance + p) % p;
+
+        res = NBC_Sched_send(tmpbuf, false, 1, sendtype, sendto, schedule, false);
+        if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { return res; }
+        res = NBC_Sched_recv(tmpbuf, false, 1, recvtype, recvfrom, schedule, true);
+        if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { return res; }
+    }
+
+    /* local rotation */
+    for (int i = 0; i < p; ++i) {
+        tmpsend = (char *)tmpbuf + (ptrdiff_t)i * (ptrdiff_t)recvcount * rcvext;
+        tmprecv = (char *)recvbuf + (ptrdiff_t)((rank - i + p) % p) * (ptrdiff_t)recvcount * rcvext;
+        res = NBC_Sched_copy(tmpsend, false, recvcount, recvtype,
+                            tmprecv, false, recvcount, recvtype, schedule, true);
+        if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { return res; }
     }
 
     return OMPI_SUCCESS;
