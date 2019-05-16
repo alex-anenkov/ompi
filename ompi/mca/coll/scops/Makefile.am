@@ -12,6 +12,8 @@ sources = \
         coll_scops.c \
         coll_scops_component.c \
         coll_scops_module.c \
+        coll_scops_request.h \
+        coll_scops_request.c \
         coll_scops_ibcast.c
 
 # Make the output library in this directory, and name it either

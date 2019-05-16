@@ -12,7 +12,7 @@
 
 #include "mpi.h"
 #include "ompi/mca/coll/coll.h"
-#include "ompi/request/request.h"
+#include "coll_scops_request.h"
 
 BEGIN_C_DECLS
 
