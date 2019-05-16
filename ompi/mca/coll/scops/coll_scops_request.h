@@ -11,11 +11,11 @@
 #include "coll_scops.h"
 #include "ompi/request/request.h"
 
-int request_alloc(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm);
-int request_return(ompi_request_t **request);
-int request_free(ompi_request_t **request);
-int request_cancel(struct ompi_request_t *request, int complete);
-int request_init(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm);
-//int request_complete(ompi_request_t **request);
+int scops_request_alloc(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm);
+int scops_request_return(ompi_request_t **request);
+// int scops_request_free(ompi_request_t **request);
+// int scops_request_cancel(struct ompi_request_t *request, int complete);
+int scops_request_init(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm);
+//int scops_request_complete(ompi_request_t **request);
 
 #endif

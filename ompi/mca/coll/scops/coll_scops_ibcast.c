@@ -32,11 +32,11 @@ int scops_ibcast_intra(
 
     int res = OMPI_SUCCESS;
 
-    res = request_init(request, persistent, comm);
-    res = ompi_request_complete(*request, false);
-    // if (OMPI_SUCCESS != res) {
-    //     request_return(request);
-    // }
+    res = scops_request_init(request, persistent, comm);
+    res = ompi_request_complete(*request, true);
+    if (OMPI_SUCCESS != res) {
+        scops_request_return(request);
+    }
 
     return res;
 }

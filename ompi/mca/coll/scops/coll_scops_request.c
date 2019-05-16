@@ -7,7 +7,7 @@
 
 #include "coll_scops_request.h"
 
-int request_alloc(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm) {
+int scops_request_alloc(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm) {
     ompi_request_t *req;
     
     req = (ompi_request_t *)opal_free_list_wait(&mca_coll_scops_component.requests);
@@ -22,7 +22,7 @@ int request_alloc(ompi_request_t **request, bool persistent, struct ompi_communi
     return OMPI_SUCCESS;
 }
 
-int request_return(ompi_request_t **request) {
+int scops_request_return(ompi_request_t **request) {
     ompi_request_t *req = *request;
 
     OMPI_REQUEST_FINI(req);
@@ -32,38 +32,38 @@ int request_return(ompi_request_t **request) {
     return OMPI_SUCCESS;
 }
 
-int request_free(ompi_request_t **request) {
+static int scops_request_free(ompi_request_t **request) {
     int res = OMPI_SUCCESS;
     if (!REQUEST_COMPLETE(*request)) {
         return MPI_ERR_REQUEST;
     }
 
-    res = request_return(request);
+    res = scops_request_return(request);
 
     //*request = MPI_REQUEST_NULL;
     *request = &ompi_request_null.request;
     return res;
 }
 
-int request_cancel(struct ompi_request_t *request, int complete) {
+static int scops_request_cancel(struct ompi_request_t *request, int complete) {
     return MPI_ERR_REQUEST;
 }
 
-int request_init(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm) {
+int scops_request_init(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm) {
     int res = OMPI_SUCCESS;
 
-    res = request_alloc(request, persistent, comm);
+    res = scops_request_alloc(request, persistent, comm);
 
     ompi_request_t *req = *request;
     req->req_status.MPI_ERROR = OMPI_SUCCESS;
     req->req_type = OMPI_REQUEST_COLL;
-    req->req_free = request_free;
-    req->req_cancel = request_cancel;
+    req->req_free = scops_request_free;
+    req->req_cancel = scops_request_cancel;
 
     return res;
 }
 
-// int request_complete(ompi_request_t **request) {
+// int scops_request_complete(ompi_request_t **request) {
 //     ompi_request_t *req = *request;
 //     int res = OMPI_SUCCESS;
 
