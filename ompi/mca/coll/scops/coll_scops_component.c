@@ -93,11 +93,13 @@ static int scops_open(void)
 
     int res;
     OBJ_CONSTRUCT(&mca_coll_scops_component.requests, opal_free_list_t);
+    OBJ_CONSTRUCT(&mca_coll_scops_component.active_requests, opal_list_t);
+    OBJ_CONSTRUCT(&mca_coll_scops_component.lock, opal_mutex_t);
     res = opal_free_list_init(&mca_coll_scops_component.requests,
                                sizeof(ompi_request_t), 8,
                                OBJ_CLASS(ompi_request_t),
                                0, 0, 0, -1, 8, NULL, 0, NULL, NULL, NULL);
-    if (OMPI_SUCCESS != res) return res;
+    if (OMPI_SUCCESS != res) { return res; }
 
     opal_output_verbose(30, mca_coll_scops_stream, "coll:scops:component_open: done");
     return OMPI_SUCCESS;
@@ -105,6 +107,8 @@ static int scops_open(void)
 
 static int scops_close(void)
 {
+    OBJ_DESTRUCT(&mca_coll_scops_component.lock);
+    OBJ_DESTRUCT(&mca_coll_scops_component.active_requests);
     OBJ_DESTRUCT(&mca_coll_scops_component.requests);
 
     opal_output_verbose(30, mca_coll_scops_stream, "coll:scops:component_close: done");

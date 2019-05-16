@@ -55,6 +55,8 @@ struct mca_coll_scops_component_t {
     /* MCA parameters first */
 
     opal_free_list_t requests;
+    opal_list_t active_requests;
+    opal_mutex_t lock;              /* protect access to the active_requests list */
 };
 
 /*
