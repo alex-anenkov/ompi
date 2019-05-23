@@ -25,12 +25,15 @@ int mca_coll_scops_priority = 5;
 int mca_coll_scops_stream = -1;
 int mca_coll_scops_verbose = 0;
 
+static int scops_in_progress = false;
+
 /*
  * Local function
  */
 static int scops_register(void);
 static int scops_open(void);
 static int scops_close(void);
+static int ompi_coll_scops_progress(void);
 
 /*
  * Instantiate the public struct with all of our public information
@@ -101,16 +104,63 @@ static int scops_open(void)
                                0, 0, 0, -1, 8, NULL, 0, NULL, NULL, NULL);
     if (OMPI_SUCCESS != res) { return res; }
 
+    res = opal_progress_register(ompi_coll_scops_progress);
+    if (OPAL_SUCCESS != res) { return res; }
+
     opal_output_verbose(30, mca_coll_scops_stream, "coll:scops:component_open: done");
     return OMPI_SUCCESS;
 }
 
 static int scops_close(void)
 {
+    opal_progress_unregister(ompi_coll_scops_progress);
+    
     OBJ_DESTRUCT(&mca_coll_scops_component.lock);
     OBJ_DESTRUCT(&mca_coll_scops_component.active_requests);
     OBJ_DESTRUCT(&mca_coll_scops_component.requests);
 
     opal_output_verbose(30, mca_coll_scops_stream, "coll:scops:component_close: done");
     return OMPI_SUCCESS;
+}
+
+static int ompi_coll_scops_progress(void)
+{
+    ompi_request_t *request, *next;
+    int res;
+
+    if (0 == opal_list_get_size(&mca_coll_scops_component.active_requests)) {
+        /* no requests -- nothing to do */
+        return 0;
+    }
+
+    /* process active requests, and use mca_coll_scops_component.lock to access the
+     * mca_coll_scops_component.active_requests list */
+    OPAL_THREAD_LOCK(&mca_coll_scops_component.lock);
+
+    /* return if invoked recursively */
+    if (!scops_in_progress) {
+        scops_in_progress = true;
+
+        OPAL_LIST_FOREACH_SAFE(request, next, &mca_coll_scops_component.active_requests,
+                               ompi_request_t) {
+            OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
+
+            // res = SCOPS_Progress(request);
+            // if (0 == progress_status) {
+            //     /* done, remove and complete */
+            //     OPAL_THREAD_LOCK(&mca_coll_scops_component.lock);
+            //     opal_list_remove_item(&mca_coll_scops_component.active_requests,
+            //                           &request->super.super.super);
+            //     OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
+            // }
+
+            OPAL_THREAD_LOCK(&mca_coll_scops_component.lock);
+
+        }
+
+        scops_in_progress = false;
+    }
+    OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
+
+    return 0;
 }
