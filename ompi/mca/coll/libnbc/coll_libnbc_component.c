@@ -54,6 +54,14 @@ static mca_base_var_enum_value_t iallgather_algorithms[] = {
     {0, NULL}
 };
 
+int libnbc_iallgatherv_algorithm = 0;             /* iallgatherv user forced algorithm */
+static mca_base_var_enum_value_t iallgatherv_algorithms[] = {
+    {0, "ignore"},
+    {1, "linear"},
+    {2, "ring"},
+    {0, NULL}
+};
+
 int libnbc_iallreduce_algorithm = 0;             /* iallreduce user forced algorithm */
 static mca_base_var_enum_value_t iallreduce_algorithms[] = {
     {0, "ignore"},
@@ -220,6 +228,15 @@ libnbc_register(void)
                                     OPAL_INFO_LVL_5, MCA_BASE_VAR_SCOPE_ALL,
                                     &libnbc_iallgather_algorithm);
     OBJ_RELEASE(new_enum);
+
+    libnbc_iallgatherv_algorithm = 0;
+    (void) mca_base_var_enum_create("coll_libnbc_iallgatherv_algorithms", iallgatherv_algorithms, &new_enum);
+    mca_base_component_var_register(&mca_coll_libnbc_component.super.collm_version,
+                                    "iallgatherv_algorithm",
+                                    "Which iallgatherv algorithm is used: 0 ignore, 1 linear, 2 ring",
+                                    MCA_BASE_VAR_TYPE_INT, new_enum, 0, MCA_BASE_VAR_FLAG_SETTABLE,
+                                    OPAL_INFO_LVL_5, MCA_BASE_VAR_SCOPE_ALL,
+                                    &libnbc_iallgatherv_algorithm);
 
     libnbc_iallreduce_algorithm = 0;
     (void) mca_base_var_enum_create("coll_libnbc_iallreduce_algorithms", iallreduce_algorithms, &new_enum);
