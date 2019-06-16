@@ -25,7 +25,7 @@
 
 static inline int scan_sched_linear(
     int rank, int comm_size, const void *sendbuf, void *recvbuf, int count,
-    MPI_Datatype datatype,  MPI_Op op, char inplace, NBC_Schedule *schedule,
+    MPI_Datatype datatype, MPI_Op op, ptrdiff_t gap, char inplace, NBC_Schedule *schedule,
     void *tmpbuf);
 static inline int scan_sched_recursivedoubling(
     int rank, int comm_size, const void *sendbuf, void *recvbuf,
@@ -107,7 +107,7 @@ static int nbc_scan_init(const void* sendbuf, void* recvbuf, int count, MPI_Data
 
     if (alg == NBC_SCAN_LINEAR) {
         res = scan_sched_linear(rank, p, sendbuf, recvbuf, count, datatype,
-                                op, inplace, schedule, tmpbuf);
+                                op, gap, inplace, schedule, tmpbuf);
     } else {
         res = scan_sched_recursivedoubling(rank, p, sendbuf, recvbuf, count,
                                            datatype, op, inplace, schedule, tmpbuf1, tmpbuf2);
@@ -182,7 +182,7 @@ static int nbc_scan_init(const void* sendbuf, void* recvbuf, int count, MPI_Data
  */
 static inline int scan_sched_linear(
     int rank, int comm_size, const void *sendbuf, void *recvbuf, int count,
-    MPI_Datatype datatype,  MPI_Op op, char inplace, NBC_Schedule *schedule,
+    MPI_Datatype datatype, MPI_Op op, ptrdiff_t gap, char inplace, NBC_Schedule *schedule,
     void *tmpbuf)
 {
     int res = OMPI_SUCCESS;
@@ -195,8 +195,6 @@ static inline int scan_sched_linear(
     }
 
     if (rank > 0) {
-        ptrdiff_t gap;
-        opal_datatype_span(&datatype->super, count, &gap);
         /* We have to wait until we have the data */
         res = NBC_Sched_recv((void *)(-gap), true, count, datatype, rank - 1, schedule, true);
         if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { goto cleanup_and_return; }

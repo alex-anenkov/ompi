@@ -39,7 +39,7 @@ static inline int allred_sched_linear(int rank, int p, const void *sendbuf, void
                                       NBC_Schedule *schedule, void *tmpbuf);
 static inline int allred_sched_redscat_allgather(
     int rank, int comm_size, int count, MPI_Datatype datatype, ptrdiff_t gap,
-    const void *sbuf, void *rbuf, MPI_Op op, char inplace,
+    const void *sbuf, void *rbuf, MPI_Op op, ptrdiff_t extent, char inplace,
     NBC_Schedule *schedule, void *tmpbuf, struct ompi_communicator_t *comm);
 
 #ifdef NBC_CACHE_SCHEDULE
@@ -66,7 +66,7 @@ static int nbc_allreduce_init(const void* sendbuf, void* recvbuf, int count, MPI
                               struct mca_coll_base_module_2_3_0_t *module, bool persistent)
 {
   int rank, p, res;
-  ptrdiff_t ext, lb;
+  ptrdiff_t ext;
   NBC_Schedule *schedule;
   size_t size;
 #ifdef NBC_CACHE_SCHEDULE
@@ -83,7 +83,7 @@ static int nbc_allreduce_init(const void* sendbuf, void* recvbuf, int count, MPI
   rank = ompi_comm_rank (comm);
   p = ompi_comm_size (comm);
 
-  res = ompi_datatype_get_extent(datatype, &lb, &ext);
+  res = ompi_datatype_type_extent(datatype, &ext);
   if (OMPI_SUCCESS != res) {
     NBC_Error ("MPI Error in ompi_datatype_type_extent() (%i)", res);
     return res;
@@ -159,7 +159,7 @@ static int nbc_allreduce_init(const void* sendbuf, void* recvbuf, int count, MPI
           res = allred_sched_diss(rank, p, count, datatype, gap, sendbuf, recvbuf, op, inplace, schedule, tmpbuf);
           break;
         case NBC_ARED_REDSCAT_ALLGATHER:
-          res = allred_sched_redscat_allgather(rank, p, count, datatype, gap, sendbuf, recvbuf, op, inplace, schedule, tmpbuf, comm);
+          res = allred_sched_redscat_allgather(rank, p, count, datatype, gap, sendbuf, recvbuf, op, ext, inplace, schedule, tmpbuf, comm);
           break;
         case NBC_ARED_RING:
           res = allred_sched_ring(rank, p, count, datatype, sendbuf, recvbuf, op, size, ext, schedule, tmpbuf);
@@ -975,7 +975,7 @@ static inline int allred_sched_linear(int rank, int rsize, const void *sendbuf, 
  */
 static inline int allred_sched_redscat_allgather(
     int rank, int comm_size, int count, MPI_Datatype datatype, ptrdiff_t gap,
-    const void *sbuf, void *rbuf, MPI_Op op, char inplace,
+    const void *sbuf, void *rbuf, MPI_Op op, ptrdiff_t extent, char inplace,
     NBC_Schedule *schedule, void *tmpbuf, struct ompi_communicator_t *comm)
 {
     int res = OMPI_SUCCESS;
@@ -989,8 +989,6 @@ static inline int allred_sched_redscat_allgather(
         if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { goto cleanup_and_return; }
     }
     char *tmp_buf = (char *)tmpbuf - gap;
-    ptrdiff_t lb, extent;
-    ompi_datatype_get_extent(datatype, &lb, &extent);
      /*
      * Step 1. Reduce the number of processes to the nearest lower power of two
      * p' = 2^{\floor{\log_2 p}} by removing r = p - p' processes.

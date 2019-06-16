@@ -23,11 +23,11 @@
 static inline int allgather_sched_linear(
     int rank, int comm_size, NBC_Schedule *schedule, const void *sendbuf,
     int scount, struct ompi_datatype_t *sdtype, void *recvbuf, int rcount,
-    struct ompi_datatype_t *rdtype);
+    struct ompi_datatype_t *rdtype, ptrdiff_t rext);
 static inline int allgather_sched_recursivedoubling(
     int rank, int comm_size, NBC_Schedule *schedule, const void *sbuf,
     int scount, struct ompi_datatype_t *sdtype, void *rbuf, int rcount,
-    struct ompi_datatype_t *rdtype);
+    struct ompi_datatype_t *rdtype, ptrdiff_t rext);
 
 #ifdef NBC_CACHE_SCHEDULE
 /* tree comparison function for schedule cache */
@@ -133,11 +133,11 @@ static int nbc_allgather_init(const void* sendbuf, int sendcount, MPI_Datatype s
     switch (alg) {
       case NBC_ALLGATHER_LINEAR:
         res = allgather_sched_linear(rank, p, schedule, sendbuf, sendcount, sendtype,
-                                     recvbuf, recvcount, recvtype);
+                                     recvbuf, recvcount, recvtype, rcvext);
         break;
       case NBC_ALLGATHER_RDBL:
         res = allgather_sched_recursivedoubling(rank, p, schedule, sendbuf, sendcount,
-                                                sendtype, recvbuf, recvcount, recvtype);
+                                                sendtype, recvbuf, recvcount, recvtype, rcvext);
         break;
     }
 
@@ -297,12 +297,10 @@ int ompi_coll_libnbc_iallgather_inter(const void* sendbuf, int sendcount, MPI_Da
 static inline int allgather_sched_linear(
     int rank, int comm_size, NBC_Schedule *schedule, const void *sendbuf,
     int scount, struct ompi_datatype_t *sdtype, void *recvbuf, int rcount,
-    struct ompi_datatype_t *rdtype)
+    struct ompi_datatype_t *rdtype, ptrdiff_t rext)
 {
     int res = OMPI_SUCCESS;
-    ptrdiff_t rlb, rext;
 
-    res = ompi_datatype_get_extent(rdtype, &rlb, &rext);
     char *sbuf = (char *)recvbuf + rank * rcount * rext;
 
     for (int remote = 0; remote < comm_size ; ++remote) {
@@ -355,14 +353,10 @@ cleanup_and_return:
 static inline int allgather_sched_recursivedoubling(
     int rank, int comm_size, NBC_Schedule *schedule, const void *sbuf,
     int scount, struct ompi_datatype_t *sdtype, void *rbuf, int rcount,
-    struct ompi_datatype_t *rdtype)
+    struct ompi_datatype_t *rdtype, ptrdiff_t rext)
 {
     int res = OMPI_SUCCESS;
-    ptrdiff_t rlb, rext;
     char *tmpsend = NULL, *tmprecv = NULL;
-
-    res = ompi_datatype_get_extent(rdtype, &rlb, &rext);
-    if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) { goto cleanup_and_return; }
 
     int sendblocklocation = rank;
     for (int distance = 1; distance < comm_size; distance <<= 1) {

@@ -27,7 +27,7 @@
 #include "nbc_internal.h"
 
 static inline int red_sched_binomial (int rank, int p, int root, const void *sendbuf, void *redbuf, char tmpredbuf, int count, MPI_Datatype datatype,
-                                      MPI_Op op, char inplace, NBC_Schedule *schedule, void *tmpbuf);
+                                      MPI_Op op, ptrdiff_t gap, char inplace, NBC_Schedule *schedule, void *tmpbuf);
 static inline int red_sched_chain (int rank, int p, int root, const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
                                    MPI_Op op, int ext, size_t size, NBC_Schedule *schedule, void *tmpbuf, int fragsize);
 
@@ -35,7 +35,7 @@ static inline int red_sched_linear (int rank, int rsize, int root, const void *s
                                     MPI_Op op, NBC_Schedule *schedule);
 static inline int red_sched_redscat_gather(
     int rank, int comm_size, int root, const void *sbuf, void *rbuf,
-    char tmpredbuf, int count, MPI_Datatype datatype, MPI_Op op, char inplace,
+    char tmpredbuf, int count, MPI_Datatype datatype, MPI_Op op, ptrdiff_t extent, char inplace,
     NBC_Schedule *schedule, void *tmp_buf, struct ompi_communicator_t *comm);
 
 #ifdef NBC_CACHE_SCHEDULE
@@ -172,13 +172,13 @@ static int nbc_reduce_init(const void* sendbuf, void* recvbuf, int count, MPI_Da
     } else {
       switch(alg) {
         case NBC_RED_BINOMIAL:
-          res = red_sched_binomial(rank, p, root, sendbuf, redbuf, tmpredbuf, count, datatype, op, inplace, schedule, tmpbuf);
+          res = red_sched_binomial(rank, p, root, sendbuf, redbuf, tmpredbuf, count, datatype, op, gap, inplace, schedule, tmpbuf);
           break;
         case NBC_RED_CHAIN:
           res = red_sched_chain(rank, p, root, sendbuf, recvbuf, count, datatype, op, ext, size, schedule, tmpbuf, segsize);
           break;
         case NBC_RED_REDSCAT_GATHER:
-          res = red_sched_redscat_gather(rank, p, root, sendbuf, redbuf, tmpredbuf, count, datatype, op, inplace, schedule, tmpbuf, comm);
+          res = red_sched_redscat_gather(rank, p, root, sendbuf, redbuf, tmpredbuf, count, datatype, op, ext, inplace, schedule, tmpbuf, comm);
           break;
       }
     }
@@ -354,12 +354,10 @@ int ompi_coll_libnbc_ireduce_inter(const void* sendbuf, void* recvbuf, int count
   if (vrank == root) rank = 0; \
 }
 static inline int red_sched_binomial (int rank, int p, int root, const void *sendbuf, void *redbuf, char tmpredbuf, int count, MPI_Datatype datatype,
-                                      MPI_Op op, char inplace, NBC_Schedule *schedule, void *tmpbuf) {
+                                      MPI_Op op, ptrdiff_t gap, char inplace, NBC_Schedule *schedule, void *tmpbuf) {
   int vroot, vrank, vpeer, peer, res, maxr;
   char *rbuf, *lbuf, *buf;
   int tmprbuf, tmplbuf;
-  ptrdiff_t gap;
-  (void)opal_datatype_span(&datatype->super, count, &gap);
 
   if (ompi_op_is_commute(op)) {
     vroot = root;
@@ -648,7 +646,7 @@ static inline int red_sched_linear (int rank, int rsize, int root, const void *s
  */
 static inline int red_sched_redscat_gather(
     int rank, int comm_size, int root, const void *sbuf, void *rbuf,
-    char tmpredbuf, int count, MPI_Datatype datatype, MPI_Op op, char inplace,
+    char tmpredbuf, int count, MPI_Datatype datatype, MPI_Op op, ptrdiff_t extent, char inplace,
     NBC_Schedule *schedule, void *tmp_buf, struct ompi_communicator_t *comm)
 {
     int res = OMPI_SUCCESS;
@@ -661,9 +659,6 @@ static inline int red_sched_redscat_gather(
         return OMPI_ERR_NOT_SUPPORTED;
     }
     int nprocs_pof2 = 1 << nsteps;                              /* flp2(comm_size) */
-
-    ptrdiff_t lb, extent;
-    ompi_datatype_get_extent(datatype, &lb, &extent);
 
     if ((rank != root) || !inplace) {
         res = NBC_Sched_copy((char *)sbuf, false, count, datatype,

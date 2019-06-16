@@ -25,7 +25,7 @@
 
 static inline int exscan_sched_linear(
     int rank, int comm_size, const void *sendbuf, void *recvbuf, int count,
-    MPI_Datatype datatype,  MPI_Op op, char inplace, NBC_Schedule *schedule,
+    MPI_Datatype datatype, MPI_Op op, ptrdiff_t gap, char inplace, NBC_Schedule *schedule,
     void *tmpbuf);
 static inline int exscan_sched_recursivedoubling(
     int rank, int comm_size, const void *sendbuf, void *recvbuf,
@@ -106,7 +106,7 @@ static int nbc_exscan_init(const void* sendbuf, void* recvbuf, int count, MPI_Da
 
     if (alg == NBC_EXSCAN_LINEAR) {
         res = exscan_sched_linear(rank, p, sendbuf, recvbuf, count, datatype,
-                                  op, inplace, schedule, tmpbuf);
+                                  op, gap, inplace, schedule, tmpbuf);
     } else {
         res = exscan_sched_recursivedoubling(rank, p, sendbuf, recvbuf, count,
                                              datatype, op, inplace, schedule, tmpbuf1, tmpbuf2);
@@ -212,12 +212,10 @@ int ompi_coll_libnbc_exscan_init(const void* sendbuf, void* recvbuf, int count, 
  */
 static inline int exscan_sched_linear(
     int rank, int comm_size, const void *sendbuf, void *recvbuf, int count,
-    MPI_Datatype datatype,  MPI_Op op, char inplace, NBC_Schedule *schedule,
+    MPI_Datatype datatype, MPI_Op op, ptrdiff_t gap, char inplace, NBC_Schedule *schedule,
     void *tmpbuf)
 {
     int res = OMPI_SUCCESS;
-    ptrdiff_t gap;
-    opal_datatype_span(&datatype->super, count, &gap);
 
     if (rank > 0) {
         if (inplace) {
