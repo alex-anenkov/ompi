@@ -263,6 +263,38 @@ int NBC_Sched_unpack (void *inbuf, char tmpinbuf, int count, MPI_Datatype dataty
   return OMPI_SUCCESS;
 }
 
+/* this function puts a callback into the schedule */
+int NBC_Sched_callback (NBC_Sched_cb_func_t *func, void *params, NBC_Schedule *schedule, bool barrier) {
+  NBC_Args_callback cb_args;
+  int ret;
+
+  /* store the passed arguments */
+  cb_args.type = CALLBACK;
+  cb_args.func = func;
+  cb_args.params = params;
+
+  /* append to the round-schedule */
+  ret = nbc_schedule_round_append (schedule, &cb_args, sizeof (cb_args), barrier);
+  if (OMPI_SUCCESS != ret) {
+    return ret;
+  }
+
+  NBC_DEBUG(10, "added callback - ends at byte %i\n", nbc_schedule_get_size (schedule));
+
+  return OMPI_SUCCESS;
+}
+
+static int nbc_callback_free_buf (struct ompi_communicator_t *comm, void *buf)
+{
+  free(buf);
+  return OMPI_SUCCESS;
+}
+
+int NBC_Sched_free (void *buf, NBC_Schedule *schedule)
+{
+  return NBC_Sched_callback(&nbc_callback_free_buf, buf, schedule, true);
+}
+
 /* this function ends a round of a schedule */
 int NBC_Sched_barrier (NBC_Schedule *schedule) {
   return nbc_schedule_round_append (schedule, NULL, 0, true);
@@ -422,6 +454,7 @@ static inline int NBC_Start_round(NBC_Handle *handle) {
   NBC_Args_op         opargs;
   NBC_Args_copy     copyargs;
   NBC_Args_unpack unpackargs;
+  NBC_Args_callback   cbargs;
   void *buf1,  *buf2;
 
   /* get round-schedule address */
@@ -567,6 +600,16 @@ static inline int NBC_Start_round(NBC_Handle *handle) {
           return res;
         }
 
+        break;
+      case CALLBACK:
+        NBC_DEBUG(5, "  CALLBACK   (offset %li) ", offset);
+        NBC_GET_BYTES(ptr,cbargs);
+        NBC_DEBUG(5, "*params: %lu\n", (unsigned long) cbargs.params);
+
+        res = cbargs.func(handle->comm, cbargs.params);
+        if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
+          return res;
+        }
         break;
       default:
         NBC_Error ("NBC_Start_round: bad type %li at offset %li", (long)type, offset);

@@ -84,7 +84,8 @@ typedef enum {
   RECV,
   OP,
   COPY,
-  UNPACK
+  UNPACK,
+  CALLBACK
 } NBC_Fn_type;
 
 /* the send argument struct */
@@ -145,6 +146,15 @@ typedef struct {
   char tmpoutbuf;
 } NBC_Args_unpack;
 
+typedef int (NBC_Sched_cb_func_t) (struct ompi_communicator_t *comm, void *params);
+
+/* the callback argument struct */
+typedef struct {
+  NBC_Fn_type type;
+  NBC_Sched_cb_func_t *func;
+  void *params;
+} NBC_Args_callback;
+
 /* internal function prototypes */
 int NBC_Sched_send (const void* buf, char tmpbuf, int count, MPI_Datatype datatype, int dest, NBC_Schedule *schedule, bool barrier);
 int NBC_Sched_local_send (const void* buf, char tmpbuf, int count, MPI_Datatype datatype, int dest,NBC_Schedule *schedule, bool barrier);
@@ -156,6 +166,8 @@ int NBC_Sched_copy (void *src, char tmpsrc, int srccount, MPI_Datatype srctype, 
                     MPI_Datatype tgttype, NBC_Schedule *schedule, bool barrier);
 int NBC_Sched_unpack (void *inbuf, char tmpinbuf, int count, MPI_Datatype datatype, void *outbuf, char tmpoutbuf,
                       NBC_Schedule *schedule, bool barrier);
+int NBC_Sched_callback (NBC_Sched_cb_func_t *func, void *params, NBC_Schedule *schedule, bool barrier);
+int NBC_Sched_free (void *buf, NBC_Schedule *schedule);
 
 int NBC_Sched_barrier (NBC_Schedule *schedule);
 int NBC_Sched_commit (NBC_Schedule *schedule);
@@ -335,6 +347,10 @@ static inline void nbc_get_round_size (char *p, unsigned long *size) {
       /*printf("found a UNPACK at offset %li\n", (long)p-(long)schedule); */
       offset += sizeof(NBC_Args_unpack);
       break;
+    case CALLBACK:
+      /*printf("found a CALLBACK at offset %li\n", (long)p-(long)schedule); */
+      offset += sizeof(NBC_Args_callback);
+      break;
     default:
       NBC_Error("NBC_GET_ROUND_SIZE: bad type %i at offset %li", type, offset);
       return;
@@ -392,6 +408,7 @@ static inline int nbc_get_noop_request(bool persistent, ompi_request_t **request
    NBC_Args_op         opargs; \
    NBC_Args_copy     copyargs; \
    NBC_Args_unpack unpackargs; \
+   NBC_Args_callback   cbargs; \
      \
    NBC_GET_BYTES(p,num); \
    MPI_Comm_rank(MPI_COMM_WORLD, &myrank); \
@@ -423,6 +440,11 @@ static inline int nbc_get_noop_request(bool persistent, ompi_request_t **request
          printf("[%i]  UNPACK   (offset %li) ", myrank, (long)p-(long)schedule); \
          NBC_GET_BYTES(p,unpackargs); \
          printf("*src: %lu, srccount: %i, srctype: %lu, *tgt: %lu\n",(unsigned long)unpackargs.inbuf, unpackargs.count, (unsigned long)unpackargs.datatype, (unsigned long)unpackargs.outbuf); \
+         break; \
+       case CALLBACK: \
+         printf("[%i]  CALLBACK   (offset %li) ", myrank, (long)p-(long)schedule); \
+         NBC_GET_BYTES(p,cbargs); \
+         printf("*params: %lu\n",(unsigned long)cbargs.params); \
          break; \
        default: \
          printf("[%i] NBC_PRINT_ROUND: bad type %i at offset %li\n", myrank, type, (long)p-sizeof(type)-(long)schedule); \
