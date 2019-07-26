@@ -99,8 +99,8 @@ static int scops_open(void)
     OBJ_CONSTRUCT(&mca_coll_scops_component.active_requests, opal_list_t);
     OBJ_CONSTRUCT(&mca_coll_scops_component.lock, opal_mutex_t);
     res = opal_free_list_init(&mca_coll_scops_component.requests,
-                               sizeof(ompi_request_t), 8,
-                               OBJ_CLASS(ompi_request_t),
+                               sizeof(ompi_coll_scops_request_t), 8,
+                               OBJ_CLASS(ompi_coll_scops_request_t),
                                0, 0, 0, -1, 8, NULL, 0, NULL, NULL, NULL);
     if (OMPI_SUCCESS != res) { return res; }
 
@@ -125,7 +125,7 @@ static int scops_close(void)
 
 static int ompi_coll_scops_progress(void)
 {
-    ompi_request_t *request, *next;
+    ompi_coll_scops_request_t *request, *next;
     int res;
 
     if (0 == opal_list_get_size(&mca_coll_scops_component.active_requests)) {
@@ -142,7 +142,7 @@ static int ompi_coll_scops_progress(void)
         scops_in_progress = true;
 
         OPAL_LIST_FOREACH_SAFE(request, next, &mca_coll_scops_component.active_requests,
-                               ompi_request_t) {
+                               ompi_coll_scops_request_t) {
             OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
 
             // res = SCOPS_Progress(request);
@@ -164,3 +164,6 @@ static int ompi_coll_scops_progress(void)
 
     return 0;
 }
+
+
+OBJ_CLASS_INSTANCE(ompi_coll_scops_request_t, ompi_request_t, scops_request_construct, NULL);

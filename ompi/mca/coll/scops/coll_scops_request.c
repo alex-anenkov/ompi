@@ -7,68 +7,47 @@
 
 #include "coll_scops_request.h"
 
-int scops_request_alloc(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm) {
-    ompi_request_t *req;
-    
-    req = (ompi_request_t *)opal_free_list_wait(&mca_coll_scops_component.requests);
-    if (NULL == req) { return OMPI_ERR_OUT_OF_RESOURCE; }
-    OMPI_REQUEST_INIT(req, persistent);
-    req->req_state = OMPI_REQUEST_ACTIVE;
-    req->req_mpi_object.comm = comm;
-    req->req_complete = (persistent) ? REQUEST_COMPLETED : REQUEST_PENDING;
-    req->req_persistent = persistent;
-    *request = req;
+int scops_request_start(size_t count, ompi_request_t ** requests) {
+    // int res;
+    // size_t i;
+
+    // for (i = 0; i < count; i++) {
+        //SCOPS_Handle *handle = (SCOPS_Handle *) requests[i];
+        //NBC_Schedule *schedule = handle->schedule;
+        //handle->super.req_complete = REQUEST_PENDING;
+        //handle->nbc_complete = false;
+
+        //res = NBC_Start(handle);
+        // if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
+        //     return res;
+        // }
+    // }
 
     return OMPI_SUCCESS;
 }
 
-int scops_request_return(ompi_request_t **request) {
-    ompi_request_t *req = *request;
-
-    OMPI_REQUEST_FINI(req);
-    opal_free_list_return(&mca_coll_scops_component.requests, (opal_free_list_item_t*) (req));
-    //req = &ompi_request_null.request;
-
-    return OMPI_SUCCESS;
-}
-
-static int scops_request_free(ompi_request_t **request) {
-    int res = OMPI_SUCCESS;
-    if (!REQUEST_COMPLETE(*request)) {
-        return MPI_ERR_REQUEST;
-    }
-
-    res = scops_request_return(request);
-
-    //*request = MPI_REQUEST_NULL;
-    *request = &ompi_request_null.request;
-    return res;
-}
-
-static int scops_request_cancel(struct ompi_request_t *request, int complete) {
+int scops_request_cancel(struct ompi_request_t *request, int complete) {
     return MPI_ERR_REQUEST;
 }
 
-int scops_request_init(ompi_request_t **request, bool persistent, struct ompi_communicator_t *comm) {
-    int res = OMPI_SUCCESS;
 
-    res = scops_request_alloc(request, persistent, comm);
+int scops_request_free(struct ompi_request_t **ompi_req) {
+    ompi_coll_scops_request_t *request = (ompi_coll_scops_request_t*) *ompi_req;
 
-    ompi_request_t *req = *request;
-    req->req_status.MPI_ERROR = OMPI_SUCCESS;
-    req->req_type = OMPI_REQUEST_COLL;
-    req->req_free = scops_request_free;
-    req->req_cancel = scops_request_cancel;
+    if (!REQUEST_COMPLETE(&request->super)) {
+        return MPI_ERR_REQUEST;
+    }
 
-    return res;
+    OMPI_COLL_SCOPS_REQUEST_RETURN(request);
+    *ompi_req = MPI_REQUEST_NULL;
+
+    return OMPI_SUCCESS;
 }
 
-// int scops_request_complete(ompi_request_t **request) {
-//     ompi_request_t *req = *request;
-//     int res = OMPI_SUCCESS;
-
-//     res = ompi_request_complete(req, false);     // just mark request as complete
-//     // req->req_complete = REQUEST_COMPLETED;
-
-//     return OMPI_SUCCESS;
-// }
+void scops_request_construct(ompi_coll_scops_request_t *request) {
+    request->super.req_type = OMPI_REQUEST_COLL;
+    request->super.req_status._cancelled = 0;
+    request->super.req_start = scops_request_start;
+    request->super.req_free = scops_request_free;
+    request->super.req_cancel = scops_request_cancel;
+}

@@ -34,14 +34,15 @@ int scops_ibcast_intra(
 
 
     ompi_coll_scops_request_t *scops_request;
-    OMPI_COLL_SCOPS_REQUEST_ALLOC(comm, scops_request);
+    OMPI_COLL_SCOPS_REQUEST_ALLOC(comm, persistent, scops_request);
     *request = &scops_request->super;
 
+    printf("1\n");
     res = ompi_request_complete(&scops_request->super, true);
     if (OMPI_SUCCESS != res) {
-        scops_request_return(&scops_request->super);
+        printf("mpi_request_complete != OMPI_SUCCESS\n");
     }
-
+    printf("2\n");
 
 
 
