@@ -32,47 +32,67 @@ int scops_ibcast_intra(
 
     int res = OMPI_SUCCESS;
 
-    res = scops_request_init(request, persistent, comm);
+
+    ompi_coll_scops_request_t *scops_request;
+    OMPI_COLL_SCOPS_REQUEST_ALLOC(comm, scops_request);
+    *request = &scops_request->super;
+
+    res = ompi_request_complete(&scops_request->super, true);
+    if (OMPI_SUCCESS != res) {
+        scops_request_return(&scops_request->super);
+    }
 
 
-    ompi_request_t *r1;
-    res = MCA_PML_CALL(isend(buf, count, dtype, root, 123,
-                                 MCA_PML_BASE_SEND_STANDARD, comm,
-                                 &r1));
 
-    ompi_request_t *r2;
-    scops_request_init(&r2, persistent, comm);
+
+
+
+
+
+
+
+
+    // res = scops_request_init(request, persistent, comm);
+
+
+    // ompi_request_t *r1;
     // res = MCA_PML_CALL(isend(buf, count, dtype, root, 123,
     //                              MCA_PML_BASE_SEND_STANDARD, comm,
-    //                              &r2));
+    //                              &r1));
+
+    // ompi_request_t *r2;
+    // scops_request_init(&r2, persistent, comm);
+    // // res = MCA_PML_CALL(isend(buf, count, dtype, root, 123,
+    // //                              MCA_PML_BASE_SEND_STANDARD, comm,
+    // //                              &r2));
 
 
 
 
 
 
-    OPAL_THREAD_LOCK(&mca_coll_scops_component.lock);
-    opal_list_append(&mca_coll_scops_component.active_requests, (opal_list_item_t *)&(r1));
-    opal_list_append(&mca_coll_scops_component.active_requests, (opal_list_item_t *)&(r2));
-    OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
+    // OPAL_THREAD_LOCK(&mca_coll_scops_component.lock);
+    // opal_list_append(&mca_coll_scops_component.active_requests, (opal_list_item_t *)&(r1));
+    // opal_list_append(&mca_coll_scops_component.active_requests, (opal_list_item_t *)&(r2));
+    // OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
 
-    res = ompi_request_complete(r2, true);
+    // res = ompi_request_complete(r2, true);
 
-    OPAL_THREAD_LOCK(&mca_coll_scops_component.lock);
-    opal_list_remove_item(&mca_coll_scops_component.active_requests, (opal_list_item_t *)&(r1));
-    OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
+    // OPAL_THREAD_LOCK(&mca_coll_scops_component.lock);
+    // opal_list_remove_item(&mca_coll_scops_component.active_requests, (opal_list_item_t *)&(r1));
+    // OPAL_THREAD_UNLOCK(&mca_coll_scops_component.lock);
 
-    if (REQUEST_COMPLETE(r1)) {
-        printf("r1\n");
-    }
-    if (REQUEST_COMPLETE(r2)) {
-        printf("r2\n");
-    }
+    // if (REQUEST_COMPLETE(r1)) {
+    //     printf("r1\n");
+    // }
+    // if (REQUEST_COMPLETE(r2)) {
+    //     printf("r2\n");
+    // }
 
-    res = ompi_request_complete(*request, true);
-    if (OMPI_SUCCESS != res) {
-        scops_request_return(request);
-    }
+    // res = ompi_request_complete(*request, true);
+    // if (OMPI_SUCCESS != res) {
+    //     scops_request_return(request);
+    // }
 
     return res;
 }
