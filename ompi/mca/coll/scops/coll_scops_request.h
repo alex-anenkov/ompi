@@ -10,9 +10,11 @@
 
 #include "coll_scops_component.h"
 #include "ompi/request/request.h"
+#include "coll_scops_sched.h"
 
 struct ompi_coll_scops_request_t {
     ompi_request_t super;
+    struct scops_sched_entry *entries;
 };
 typedef struct ompi_coll_scops_request_t ompi_coll_scops_request_t;
 typedef ompi_coll_scops_request_t SCOPS_Handle;
@@ -28,13 +30,14 @@ OBJ_CLASS_DECLARATION(ompi_coll_scops_request_t);
         req->super.req_mpi_object.comm = comm;                          \
         req->super.req_state = OMPI_REQUEST_ACTIVE;                           \
         req->super.req_complete = (persistent) ? REQUEST_COMPLETED : REQUEST_PENDING; \
-        req->super.req_persistent = persistent;                               \
+        req->super.req_persistent = persistent;                         \
+        req->entries = NULL;                                            \
     } while (0)
 
 #define OMPI_COLL_SCOPS_REQUEST_RETURN(req)                            \
     do {                                                                \
         OMPI_REQUEST_FINI(&(req)->super);                               \
-        opal_free_list_return (&mca_coll_scops_component.requests,     \
+        opal_free_list_return(&mca_coll_scops_component.requests,     \
                                (opal_free_list_item_t*) (req));         \
     } while (0)
 
