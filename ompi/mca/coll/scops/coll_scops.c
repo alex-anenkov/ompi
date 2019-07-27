@@ -22,3 +22,6 @@
 #include "ompi/op/op.h"
 #include "coll_scops.h"
 
+void scops_progress(ompi_coll_scops_request_t *request) {
+    printf("scops_progress()\n");
+}

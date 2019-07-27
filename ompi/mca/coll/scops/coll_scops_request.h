@@ -8,7 +8,7 @@
 #ifndef MCA_COLL_SCOPS_REQUEST_EXPORT_H
 #define MCA_COLL_SCOPS_REQUEST_EXPORT_H
 
-#include "coll_scops.h"
+#include "coll_scops_component.h"
 #include "ompi/request/request.h"
 
 struct ompi_coll_scops_request_t {
