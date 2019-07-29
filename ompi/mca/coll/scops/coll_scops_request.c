@@ -7,12 +7,11 @@
 
 #include "coll_scops_request.h"
 
-int scops_request_start(size_t count, ompi_request_t ** requests) {
-    // int res;
-    // size_t i;
+int scops_request_start(size_t count, ompi_request_t **reqs) {
+    int res = OMPI_SUCCESS;
 
-    // for (i = 0; i < count; i++) {
-        //SCOPS_Handle *handle = (SCOPS_Handle *) requests[i];
+    // for(size_t i = 0; i < count; i++) {
+        //SCOPS_Handle *handle = (SCOPS_Handle *) reqs[i];
         //NBC_Schedule *schedule = handle->schedule;
         //handle->super.req_complete = REQUEST_PENDING;
         //handle->nbc_complete = false;
@@ -23,31 +22,30 @@ int scops_request_start(size_t count, ompi_request_t ** requests) {
         // }
     // }
 
-    return OMPI_SUCCESS;
+    return res;
 }
 
-int scops_request_cancel(struct ompi_request_t *request, int complete) {
+int scops_request_cancel(struct ompi_request_t *req, int complete) {
     return MPI_ERR_REQUEST;
 }
 
+int scops_request_free(struct ompi_request_t **req) {
+    ompi_coll_scops_request_t *scops_request = (ompi_coll_scops_request_t*) *req;
 
-int scops_request_free(struct ompi_request_t **ompi_req) {
-    ompi_coll_scops_request_t *request = (ompi_coll_scops_request_t*) *ompi_req;
-
-    if (!REQUEST_COMPLETE(&request->super)) {
+    if (!REQUEST_COMPLETE(&scops_request->super)) {
         return MPI_ERR_REQUEST;
     }
 
-    OMPI_COLL_SCOPS_REQUEST_RETURN(request);
-    *ompi_req = MPI_REQUEST_NULL;
+    OMPI_COLL_SCOPS_REQUEST_RETURN(scops_request);
+    *req = MPI_REQUEST_NULL;
 
     return OMPI_SUCCESS;
 }
 
-void scops_request_construct(ompi_coll_scops_request_t *request) {
-    request->super.req_type = OMPI_REQUEST_COLL;
-    request->super.req_status._cancelled = 0;
-    request->super.req_start = scops_request_start;
-    request->super.req_free = scops_request_free;
-    request->super.req_cancel = scops_request_cancel;
+void scops_request_construct(ompi_coll_scops_request_t *req) {
+    req->super.req_type = OMPI_REQUEST_COLL;
+    req->super.req_status._cancelled = 0;
+    req->super.req_start = scops_request_start;
+    req->super.req_free = scops_request_free;
+    req->super.req_cancel = scops_request_cancel;
 }

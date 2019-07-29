@@ -43,9 +43,9 @@ OBJ_CLASS_DECLARATION(ompi_coll_scops_request_t);
 
 
 
-int scops_request_start(size_t count, ompi_request_t ** requests);
-int scops_request_cancel(struct ompi_request_t *request, int complete);
-int scops_request_free(struct ompi_request_t **ompi_req);
-void scops_request_construct(ompi_coll_scops_request_t *request);
+int scops_request_start(size_t count, ompi_request_t **reqs);
+int scops_request_cancel(struct ompi_request_t *req, int complete);
+int scops_request_free(struct ompi_request_t **req);
+void scops_request_construct(ompi_coll_scops_request_t *req);
 
 #endif
