@@ -37,12 +37,8 @@ int mca_coll_scops_init_query(bool enable_progress_threads,
 mca_coll_base_module_t *mca_coll_scops_comm_query(
     struct ompi_communicator_t *comm, int *priority)
 {
-    mca_coll_scops_module_t *scops_module;
-
-    opal_output_verbose(40, mca_coll_scops_stream, "coll:scops:module_comm_query called (priority %d)",
-                        mca_coll_scops_priority);
-
     *priority = mca_coll_scops_priority;
+
     if (mca_coll_scops_priority <= 0) {
         opal_output_verbose(20, mca_coll_scops_stream, "coll:scops:module_comm_query: too low priority %d",
                             mca_coll_scops_priority);
@@ -56,8 +52,7 @@ mca_coll_base_module_t *mca_coll_scops_comm_query(
         return NULL;
     }
 
-
-    scops_module = OBJ_NEW(mca_coll_scops_module_t);
+    mca_coll_scops_module_t *scops_module = OBJ_NEW(mca_coll_scops_module_t);
     if (NULL == scops_module) {
         return NULL;
     }
@@ -78,18 +73,16 @@ mca_coll_base_module_t *mca_coll_scops_comm_query(
 static int scops_module_enable(mca_coll_base_module_t *module,
                                struct ompi_communicator_t *comm)
 {
-    int err = OMPI_SUCCESS;
     mca_coll_scops_module_t *scops_module = (mca_coll_scops_module_t *)module;
-    mca_coll_base_comm_t *data = NULL;
 
-    opal_output_verbose(40, mca_coll_scops_stream, "coll:scops:module_enable called");
     /* prepare the placeholder for the array of request* */
-    data = OBJ_NEW(mca_coll_base_comm_t);
-    if (NULL == data)
+    mca_coll_base_comm_t *data = OBJ_NEW(mca_coll_base_comm_t);
+    if (NULL == data) {
         return OMPI_ERROR;
+    }
     scops_module->super.base_data = data;
 
-    return err;
+    return OMPI_SUCCESS;
 }
 
 static void mca_coll_scops_module_construct(mca_coll_scops_module_t *module)
